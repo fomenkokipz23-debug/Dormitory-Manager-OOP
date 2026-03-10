@@ -1,13 +1,17 @@
 @using DormitorySite.Models
 @model Student
 
+@{
+    ViewData["Title"] = "Реєстрація студента";
+}
+
 <div class="container mt-4" style="max-width: 500px;">
     <div class="card shadow-sm p-4 border-0 rounded-4">
         <h2 class="mb-4 fw-bold text-primary text-center">
             <i class="bi bi-person-plus"></i> Реєстрація студента
         </h2>
 
-        @* СПОВІЩЕННЯ ПРО ПОМИЛКУ (НАПРИКЛАД, РІЗНА СТАТЬ) *@
+        @* Загальне сповіщення про помилки (наприклад, якщо стать не співпадає) *@
         @if (!ViewData.ModelState.IsValid)
         {
             <div class="alert alert-danger border-0 shadow-sm mb-4">
@@ -16,17 +20,22 @@
             </div>
         }
 
-        <form method="post">
+        @* Використовуємо Tag Helper для форми (автоматично додає захист від CSRF) *@
+        <form asp-action="AddStudent" method="post">
+            
             @* ПІБ *@
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">ПІБ СТУДЕНТА:</label>
-                <input type="text" name="FullName" class="form-control" required placeholder="Прізвище Ім'я По батькові" value="@Model?.FullName" />
+                @* asp-for автоматично згенерує id, name та підтягне value з моделі *@
+                <input asp-for="FullName" class="form-control" placeholder="Прізвище Ім'я По батькові" />
+                @* Цей рядок автоматично покаже помилку з нашого Student.cs, якщо поле порожнє *@
+                <span asp-validation-for="FullName" class="text-danger small fw-bold"></span>
             </div>
 
-            @* ОБРАННЯ КІМНАТИ ТА ПЕРІОДУ ОПЛАТИ *@
+            @* ОБРАННЯ КІМНАТИ *@
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">ОБЕРІТЬ КІМНАТУ</label>
-                <select name="RoomNumber" id="RoomNumber" class="form-select bg-light" required onchange="calculatePrice()">
+                <select asp-for="RoomNumber" id="RoomNumber" class="form-select bg-light" onchange="calculatePrice()">
                     <option value="">-- Оберіть номер кімнати --</option>
                     @if (ViewBag.Rooms != null)
                     {
@@ -36,7 +45,7 @@
                             string genderInfo = room.Students.Any() ? $" ({room.Students.First().Gender})" : " (Порожня)";
 
                             <option value="@room.Number" 
-                                    selected="@(room.Number == (ViewBag.SelectedRoom ?? Model?.RoomNumber))"
+                                    selected="@(room.Number == ViewBag.SelectedRoom)"
                                     disabled="@(!isAvailable)"
                                     data-room-type="@(room.Number.ToString().StartsWith("1") ? "Standard" : (room.Number.ToString().StartsWith("2") ? "Discount" : "Luxury"))"
                                     class="@(isAvailable ? "" : "text-danger")">
@@ -45,11 +54,13 @@
                         }
                     }
                 </select>
+                <span asp-validation-for="RoomNumber" class="text-danger small fw-bold"></span>
             </div>
 
+            @* ПЕРІОД ОПЛАТИ *@
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">ПЕРІОД ОПЛАТИ:</label>
-                <select name="PaidMonths" id="PaidMonths" class="form-select bg-light" onchange="calculatePrice()">
+                <select asp-for="PaidMonths" id="PaidMonths" class="form-select bg-light" onchange="calculatePrice()">
                     <option value="0">Ще не оплачено (Борг)</option>
                     <option value="1">1 місяць</option>
                     <option value="5">5 місяців (Семестр)</option>
@@ -61,7 +72,7 @@
             <div class="alert alert-info border-0 shadow-sm mb-4 py-2" id="priceAlert" style="display: none;">
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="fw-bold"><i class="bi bi-calculator me-1"></i> ДО ОПЛАТИ:</small>
-                    <span id="totalPrice" class="fw-bold fs-5">0 грн</span>
+                    <span id="totalPrice" class="fw-bold fs-5 text-primary">0 грн</span>
                 </div>
             </div>
 
@@ -69,14 +80,16 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label small fw-bold text-muted">СТАТЬ:</label>
-                    <select name="Gender" class="form-select bg-light" required>
-                        <option value="Чоловіча" selected="@(Model?.Gender == "Чоловіча")">Чоловіча</option>
-                        <option value="Жіноча" selected="@(Model?.Gender == "Жіноча")">Жіноча</option>
+                    <select asp-for="Gender" class="form-select bg-light">
+                        <option value="Чоловіча">Чоловіча</option>
+                        <option value="Жіноча">Жіноча</option>
                     </select>
+                    <span asp-validation-for="Gender" class="text-danger small fw-bold"></span>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small fw-bold text-muted">КУРС:</label>
-                    <input type="number" name="Course" min="1" max="6" class="form-control" required value="@(Model?.Course ?? 1)" />
+                    <input asp-for="Course" class="form-control" />
+                    <span asp-validation-for="Course" class="text-danger small fw-bold"></span>
                 </div>
             </div>
 
@@ -84,21 +97,17 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label small fw-bold text-muted">ДАТА ЗАСЕЛЕННЯ:</label>
-                    <input type="date" name="SettlementDate" 
-                           value="@(Model?.SettlementDate.ToString("yyyy-MM-dd") ?? DateTime.Now.ToString("yyyy-MM-dd"))" 
-                           class="form-control" />
+                    <input asp-for="SettlementDate" type="date" class="form-control" />
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label small fw-bold text-muted">ДАТА ВИСЕЛЕННЯ:</label>
-                    <input type="date" name="DepartureDate" 
-                           value="@(Model?.DepartureDate != DateTime.MinValue ? Model?.DepartureDate.ToString("yyyy-MM-dd") : "")" 
-                           class="form-control" required />
+                    <input asp-for="DepartureDate" type="date" class="form-control" />
                 </div>
             </div>
 
-            <div class="d-grid gap-2">
+            <div class="d-grid gap-2 mt-2">
                 <button type="submit" class="btn btn-success shadow-sm py-2 fw-bold rounded-3">
-                    ЗАТВЕРДИТИ ПОСЕЛЕННЯ
+                    <i class="bi bi-check-circle me-1"></i> ЗАТВЕРДИТИ ПОСЕЛЕННЯ
                 </button>
                 <a href="@Url.Action("Index", "Dormitory")" class="btn btn-link text-muted btn-sm text-decoration-none">Скасувати</a>
             </div>
@@ -107,35 +116,36 @@
 </div>
 
 @section Scripts {
-<script>
-    function calculatePrice() {
-        const roomSelect = document.getElementById("RoomNumber");
-        const monthsSelect = document.getElementById("PaidMonths");
-        const priceAlert = document.getElementById("priceAlert");
-        const priceDisplay = document.getElementById("totalPrice");
+    @* Цей скрипт підключає клієнтську валідацію jQuery (працює миттєво без перезавантаження сторінки) *@
+    <partial name="_ValidationScriptsPartial" />
 
-        const months = parseInt(monthsSelect.value);
-        const selectedOption = roomSelect.options[roomSelect.selectedIndex];
-        
-        if (!selectedOption || selectedOption.value === "" || months === 0) {
-            priceAlert.style.display = "none";
-            return;
+    <script>
+        function calculatePrice() {
+            const roomSelect = document.getElementById("RoomNumber");
+            const monthsSelect = document.getElementById("PaidMonths");
+            const priceAlert = document.getElementById("priceAlert");
+            const priceDisplay = document.getElementById("totalPrice");
+
+            const months = parseInt(monthsSelect.value);
+            const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+            
+            if (!selectedOption || selectedOption.value === "" || months === 0) {
+                priceAlert.style.display = "none";
+                return;
+            }
+
+            const roomType = selectedOption.getAttribute("data-room-type");
+            let dailyRate = 200; // Standard
+
+            if (roomType === "Discount") dailyRate = 80;
+            if (roomType === "Luxury") dailyRate = 500;
+
+            const total = dailyRate * 30 * months;
+            
+            priceDisplay.innerText = total.toLocaleString() + " грн";
+            priceAlert.style.display = "block";
         }
 
-        // Логіка цін (має співпадати з вашими Strategy у C#)
-        const roomType = selectedOption.getAttribute("data-room-type");
-        let dailyRate = 200; // Standard за замовчуванням
-
-        if (roomType === "Discount") dailyRate = 80;
-        if (roomType === "Luxury") dailyRate = 500;
-
-        const total = dailyRate * 30 * months;
-        
-        priceDisplay.innerText = total.toLocaleString() + " грн";
-        priceAlert.style.display = "block";
-    }
-
-    // Викликаємо при завантаженні, якщо кімната вже обрана
-    document.addEventListener("DOMContentLoaded", calculatePrice);
-</script>
+        document.addEventListener("DOMContentLoaded", calculatePrice);
+    </script>
 }

@@ -3,6 +3,7 @@
 @model Floor
 
 @{
+    // Локальна функція для рендеру картки кімнати (дотримання принципу DRY)
     void RenderRoom(DormitorySite.Models.Room room)
     {
         var state = room.State;
@@ -36,17 +37,17 @@
                 }
                 else
                 {
-                    @* СІТКА ЛІЖОК 2x2 (ЯК НА МАЛЮНКУ) *@
+                    @* СІТКА ЛІЖОК (Гнучка, залежить від місткості кімнати) *@
                     <div class="beds-grid mb-3">
-                        @for (int i = 0; i < 4; i++)
+                        @for (int i = 0; i < Room.MaxCapacity; i++)
                         {
                             var student = room.Students.ElementAtOrDefault(i);
                             <div class="bed-slot @(student != null ? "occupied" : "empty")">
                                 @if (student != null)
                                 {
                                     <div class="student-mini-card">
-                                        @* Прізвище та курс *@
-                                        <div class="s-name">@student.FullName.Split(' ')[0]</div>
+                                        @* Прізвище та курс (безпечний поділ рядка) *@
+                                        <div class="s-name">@(student.FullName?.Split(' ')[0] ?? "Невідомо")</div>
                                         <div class="s-course">@student.Course к.</div>
                                         
                                         @* Дати *@
@@ -64,6 +65,7 @@
                         }
                     </div>
 
+                    @* Делегуємо перевірку об'єкту стану (State Pattern) *@
                     @if (room.State.CanAssignStudent(room.Students.Count))
                     {
                         <a href="@Url.Action("AddStudent", "Dormitory", new { roomNumber = room.Number })" 
@@ -72,7 +74,8 @@
                             <i class="bi bi-person-plus-fill"></i> Поселити
                         </a>
                     }
-                    else if (room.Students.Count >= 4)
+                    @* Використовуємо константу замість магічного числа *@
+                    else if (room.Students.Count >= Room.MaxCapacity)
                     {
                         <div class="text-center text-danger small fw-bold py-1 bg-danger-subtle rounded border border-danger" style="font-size: 0.65rem;">
                             КІМНАТА ПОВНА
@@ -109,7 +112,7 @@
         align-items: center;
         justify-content: center;
         transition: all 0.2s;
-        min-height: 75px; /* Щоб вмістився текст */
+        min-height: 75px;
     }
 
     .bed-slot.occupied {

@@ -95,3 +95,4 @@ D:\Курсова робота з ООП 2\DormitorySite\obj\Debug\net10.0\refin
 D:\Курсова робота з ООП 2\DormitorySite\obj\Debug\net10.0\DormitorySite.pdb
 D:\Курсова робота з ООП 2\DormitorySite\obj\Debug\net10.0\DormitorySite.genruntimeconfig.cache
 D:\Курсова робота з ООП 2\DormitorySite\obj\Debug\net10.0\ref\DormitorySite.dll
+D:\Курсова робота з ООП 2\DormitorySite\obj\Debug\net10.0\DormitorySite.sourcelink.json

@@ -7,9 +7,10 @@
         <h2 class="fw-bold text-primary">
             <i class="bi bi-calendar3"></i> Графік заселень та виселень
         </h2>
-        <div class="text-muted">
-            <span class="badge bg-success me-2">●</span> Заселення
-            <span class="badge bg-danger ms-3">●</span> Виселення
+        @* Трохи стилізували легенду, щоб вона виглядала як панель керування *@
+        <div class="text-muted border px-3 py-2 rounded-3 bg-light shadow-sm small fw-bold">
+            <span class="badge bg-success me-1"><i class="bi bi-box-arrow-in-right"></i></span> Заселення
+            <span class="badge bg-danger ms-3 me-1"><i class="bi bi-box-arrow-right"></i></span> Виселення
         </div>
     </div>
 
@@ -28,8 +29,8 @@
         
         var calendar = new FullCalendar.Calendar(calendarEl, {
           initialView: 'dayGridMonth',
-          locale: 'uk', // Тепер українська мова точно підтягнеться
-          firstDay: 1,  // Понеділок - перший день тижня
+          locale: 'uk',
+          firstDay: 1,
           headerToolbar: {
             left: 'prev,next today',
             center: 'title',
@@ -40,11 +41,19 @@
             month: 'Місяць',
             week: 'Тиждень'
           },
-          // ВИПРАВЛЕНО: Використовуємо Razor для точної генерації посилання
-          events: '@Url.Action("GetCalendarEvents", "Dormitory")',
+          
+          // ПРОФЕСІЙНИЙ ПІДХІД: Обробка помилок завантаження подій
+          events: {
+              url: '@Url.Action("GetCalendarEvents", "Dormitory")',
+              failure: function() {
+                  alert('⚠️ Помилка завантаження даних! Можливо, ваша сесія закінчилася. Будь ласка, оновіть сторінку або увійдіть знову.');
+              }
+          },
           
           eventClick: function(info) {
-             alert(info.event.title);
+             // Запобігаємо стандартній поведінці браузера
+             info.jsEvent.preventDefault(); 
+             alert("Деталі:\n" + info.event.title + "\nДата: " + info.event.start.toLocaleDateString('uk-UA'));
           },
           height: 'auto'
         });

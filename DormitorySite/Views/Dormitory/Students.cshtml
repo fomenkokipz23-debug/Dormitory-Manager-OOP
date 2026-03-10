@@ -1,6 +1,10 @@
 @using DormitorySite.Models
 @model List<DormitorySite.Models.Student>
 
+@{
+    ViewData["Title"] = "Список мешканців";
+}
+
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold text-primary"><i class="bi bi-people-fill"></i> Список мешканців</h2>
@@ -68,14 +72,17 @@
                                 <span class="badge bg-secondary px-3">№@student.RoomNumber</span>
                             </td>
                             <td>
-                                @* ОСЬ ТУТ ЗМІНИ ДЛЯ КВИТАНЦІЇ *@
                                 @if (student.PaidMonths > 0)
                                 {
                                     <div class="d-flex flex-column align-items-start gap-1">
                                         <span class="text-success small fw-bold">
                                             <i class="bi bi-check-circle-fill"></i> Оплачено (@student.PaidMonths міс.)
                                         </span>
-                                        <a href="@Url.Action("DownloadReceipt", "Dormitory", new { fullName = student.FullName, roomNumber = student.RoomNumber })" 
+                                        @* ВИКОРИСТАННЯ СУЧАСНИХ TAG HELPERS ДЛЯ КНОПКИ ЗАВАНТАЖЕННЯ *@
+                                        <a asp-controller="Dormitory" 
+                                           asp-action="DownloadReceipt" 
+                                           asp-route-fullName="@student.FullName" 
+                                           asp-route-roomNumber="@student.RoomNumber"
                                            class="btn btn-sm btn-outline-success" 
                                            style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px;">
                                             <i class="bi bi-download"></i> Завантажити чек

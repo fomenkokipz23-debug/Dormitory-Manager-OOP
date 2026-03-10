@@ -12,9 +12,25 @@
                 {
                     @foreach (var log in Model.AsEnumerable().Reverse()) // Останні події зверху
                     {
-                        <div class="list-group-item list-group-item-action py-3">
+                        // "Розумне" визначення кольору на основі вмісту логу
+                        string borderColor = "#6a3f6e"; // Фіолетовий (за замовчуванням)
+                        
+                        if (log.Contains("✅")) 
+                        { 
+                            borderColor = "#198754"; // Зелений (Успіх)
+                        }
+                        else if (log.Contains("⚠️")) 
+                        { 
+                            borderColor = "#dc3545"; // Червоний (Попередження/Борг)
+                        }
+                        else if (log.Contains("ремонт")) 
+                        { 
+                            borderColor = "#fd7e14"; // Оранжевий (Технічні дії)
+                        }
+
+                        <div class="list-group-item list-group-item-action py-3 log-item" style="border-left-color: @borderColor;">
                             <div class="d-flex w-100 justify-content-between">
-                                <p class="mb-1">@log</p>
+                                <p class="mb-1 text-dark fw-medium">@log</p>
                             </div>
                         </div>
                     }
@@ -23,7 +39,7 @@
                 {
                     <div class="p-5 text-center text-muted">
                         <i class="bi bi-info-circle display-4"></i>
-                        <p class="mt-3">Журнал порожній. Заселіть когось, щоб з'явилися записи.</p>
+                        <p class="mt-3 fs-5">Журнал порожній. Заселіть когось або змініть стан кімнати, щоб з'явилися записи.</p>
                     </div>
                 }
             </div>
@@ -32,6 +48,14 @@
 </div>
 
 <style>
-    .list-group-item { border-left: 5px solid #6a3f6e; transition: all 0.2s; }
-    .list-group-item:hover { background-color: #f8f9fa; transform: translateX(5px); }
+    .log-item { 
+        border-left: 5px solid; /* Колір підставляється динамічно з Razor */
+        transition: all 0.2s; 
+        background-color: #fff;
+    }
+    .log-item:hover { 
+        background-color: #f8fafc; 
+        transform: translateX(5px); 
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
 </style>
