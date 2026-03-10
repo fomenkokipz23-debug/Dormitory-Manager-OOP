@@ -1,0 +1,6 @@
+@{ Layout = null; } <h2>Вхід у систему керування</h2>
+<form method="post">
+    <input type="password" name="password" placeholder="Введіть пароль" required />
+    <button type="submit">Увійти</button>
+</form>
+@if (ViewBag.Error != null) { <p style="color:red">@ViewBag.Error</p> }

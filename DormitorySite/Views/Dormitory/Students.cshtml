@@ -1,0 +1,132 @@
+@using DormitorySite.Models
+@model List<DormitorySite.Models.Student>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary"><i class="bi bi-people-fill"></i> Список мешканців</h2>
+    </div>
+
+    @* Фільтрація та пошук *@
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body p-4">
+            <form method="get" asp-action="Students" class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label small fw-bold text-muted">ПОШУК ЗА ПРІЗВИЩЕМ</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                        <input type="text" name="search" class="form-control border-start-0" placeholder="Введіть ПІБ..." value="@Context.Request.Query["search"]">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">КУРС</label>
+                    <select name="course" class="form-select" onchange="this.form.submit()">
+                        <option value="">Всі курси</option>
+                        @for (int i = 1; i <= 6; i++)
+                        {
+                            <option value="@i" selected="@(Context.Request.Query["course"] == i.ToString())">@i курс</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted">СТАТЬ</label>
+                    <select name="gender" class="form-select" onchange="this.form.submit()">
+                        <option value="">Всі</option>
+                        <option value="Чоловіча" selected="@(Context.Request.Query["gender"] == "Чоловіча")">Чоловіча</option>
+                        <option value="Жіноча" selected="@(Context.Request.Query["gender"] == "Жіноча")">Жіноча</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* Таблиця мешканців *@
+    <div class="table-responsive shadow-sm rounded-4 bg-white">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="bg-primary text-white">
+                <tr>
+                    <th class="ps-4 py-3 border-0">ПІБ Студента</th>
+                    <th class="py-3 border-0">Курс</th>
+                    <th class="py-3 border-0">Кімната</th>
+                    <th class="py-3 border-0">Статус оплати</th>
+                    <th class="py-3 border-0">Стать</th>
+                    <th class="pe-4 py-3 border-0">Період проживання</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    @foreach (var student in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">@student.FullName</div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@student.Course курс</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary px-3">№@student.RoomNumber</span>
+                            </td>
+                            <td>
+                                @* ОСЬ ТУТ ЗМІНИ ДЛЯ КВИТАНЦІЇ *@
+                                @if (student.PaidMonths > 0)
+                                {
+                                    <div class="d-flex flex-column align-items-start gap-1">
+                                        <span class="text-success small fw-bold">
+                                            <i class="bi bi-check-circle-fill"></i> Оплачено (@student.PaidMonths міс.)
+                                        </span>
+                                        <a href="@Url.Action("DownloadReceipt", "Dormitory", new { fullName = student.FullName, roomNumber = student.RoomNumber })" 
+                                           class="btn btn-sm btn-outline-success" 
+                                           style="font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px;">
+                                            <i class="bi bi-download"></i> Завантажити чек
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-danger small fw-bold">
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Не оплачено
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @(student.Gender == "Чоловіча" ? "bg-primary" : "bg-danger")" style="width: 80px;">
+                                    @student.Gender
+                                </span>
+                            </td>
+                            <td class="pe-4">
+                                <div class="d-flex flex-column small text-muted">
+                                    <span><i class="bi bi-box-arrow-in-right text-success me-1"></i> @student.SettlementDate.ToString("dd.MM.yyyy")</span>
+                                    <span><i class="bi bi-box-arrow-right text-danger me-1"></i> @student.DepartureDate.ToString("dd.MM.yyyy")</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-person-x display-3"></i>
+                                <p class="mt-3 fs-5">Мешканців не знайдено</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .table thead th { 
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        letter-spacing: 0.5px; 
+    }
+    .table-hover tbody tr:hover { background-color: #f0f7ff; }
+    .rounded-4 { border-radius: 1rem !important; }
+    .badge { border-radius: 6px; padding: 0.5em 0.8em; }
+</style>

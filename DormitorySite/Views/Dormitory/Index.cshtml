@@ -1,0 +1,285 @@
+@using DormitorySite.Services
+@using DormitorySite.Models
+@model Floor
+
+@{
+    void RenderRoom(DormitorySite.Models.Room room)
+    {
+        var state = room.State;
+        
+        <div class="room-card shadow-sm border-top border-5 border-@state.GetColorClass()">
+            <div class="room-header d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <span class="room-number fw-bold text-dark">№@room.Number</span>
+                    <span class="badge bg-@state.GetColorClass() ms-1" style="font-size: 0.6rem;">@state.GetStatusName()</span>
+                    
+                    @if (room.Students.Any())
+                    {
+                        var firstGender = room.Students.First().Gender;
+                        <i class="bi @(firstGender == "Чоловіча" ? "bi-gender-male text-dorm-purple" : "bi-gender-female text-danger") ms-1" 
+                           title="Тип кімнати: @firstGender"></i>
+                    }
+                </div>
+                <a href="@Url.Action("ToggleRepair", "Dormitory", new { roomNumber = room.Number, floor = Model.Number })" 
+                   class="btn btn-sm p-0 px-1 border-0 text-dorm-purple" title="Перемкнути ремонт">
+                    <i class="bi bi-tools" style="font-size: 0.7rem;"></i>
+                </a>
+            </div>
+
+            <div class="room-content">
+                @if (room.IsUnderRepair)
+                {
+                    <div class="w-100 py-4 text-center text-secondary">
+                        <i class="bi bi-cone-striped display-6 opacity-50"></i>
+                        <div class="small fw-bold">РЕМОНТ</div>
+                    </div>
+                }
+                else
+                {
+                    @* СІТКА ЛІЖОК 2x2 (ЯК НА МАЛЮНКУ) *@
+                    <div class="beds-grid mb-3">
+                        @for (int i = 0; i < 4; i++)
+                        {
+                            var student = room.Students.ElementAtOrDefault(i);
+                            <div class="bed-slot @(student != null ? "occupied" : "empty")">
+                                @if (student != null)
+                                {
+                                    <div class="student-mini-card">
+                                        @* Прізвище та курс *@
+                                        <div class="s-name">@student.FullName.Split(' ')[0]</div>
+                                        <div class="s-course">@student.Course к.</div>
+                                        
+                                        @* Дати *@
+                                        <div class="s-dates mt-1">
+                                            <div class="text-success">⬇@student.SettlementDate.ToString("dd.MM")</div>
+                                            <div class="text-danger">⬆@student.DepartureDate.ToString("dd.MM")</div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-plus-lg opacity-25" style="font-size: 0.8rem;"></i>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    @if (room.State.CanAssignStudent(room.Students.Count))
+                    {
+                        <a href="@Url.Action("AddStudent", "Dormitory", new { roomNumber = room.Number })" 
+                           class="btn btn-sm btn-custom-settle w-100 py-1" 
+                           style="font-size: 0.7rem;">
+                            <i class="bi bi-person-plus-fill"></i> Поселити
+                        </a>
+                    }
+                    else if (room.Students.Count >= 4)
+                    {
+                        <div class="text-center text-danger small fw-bold py-1 bg-danger-subtle rounded border border-danger" style="font-size: 0.65rem;">
+                            КІМНАТА ПОВНА
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
+}
+
+<style>
+    body { background-color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    .text-dorm-purple { color: #6a3f6e !important; }
+
+    /* СТИЛЬ СІТКИ ЛІЖОК (2x2) */
+    .beds-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 6px;
+        padding: 4px;
+        background: #f1f5f9;
+        border-radius: 8px;
+    }
+
+    .bed-slot {
+        aspect-ratio: 1 / 1;
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        min-height: 75px; /* Щоб вмістився текст */
+    }
+
+    .bed-slot.occupied {
+        border-color: #6a3f6e;
+        background: #fff;
+    }
+
+    /* МІНІ-КАРТКА СТУДЕНТА ВСЕРЕДИНІ ЛІЖКА */
+    .student-mini-card {
+        text-align: center;
+        width: 100%;
+        padding: 2px;
+    }
+
+    .student-mini-card .s-name {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #6a3f6e;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1;
+    }
+
+    .student-mini-card .s-course {
+        font-size: 0.55rem;
+        color: #64748b;
+        line-height: 1;
+    }
+
+    .student-mini-card .s-dates {
+        font-size: 0.5rem;
+        line-height: 1.1;
+        font-weight: 700;
+    }
+
+    /* Навігація поверхів */
+    .floor-navigation {
+        background: #f1f5f9;
+        padding: 8px;
+        border-radius: 50px;
+        margin-bottom: 25px;
+        display: inline-flex;
+        gap: 5px;
+        border: 1px solid #e2e8f0;
+    }
+    .floor-link {
+        padding: 8px 25px;
+        border-radius: 40px;
+        text-decoration: none;
+        color: #64748b;
+        font-weight: 600;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+    .floor-link:hover { background: #e2e8f0; color: #1e293b; }
+    .floor-link.active {
+        background: #6a3f6e;
+        color: white;
+        box-shadow: 0 4px 6px -1px rgba(119, 16, 160, 0.3);
+    }
+
+    .dormitory-container {
+        padding: 30px;
+        background-color: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    }
+
+    .rooms-row {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 20px;
+    }
+
+    .corridor {
+        height: 50px;
+        background: #f8fafc;
+        border-radius: 12px;
+        margin: 25px 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #cbd5e1;
+        text-transform: uppercase;
+        letter-spacing: 8px;
+        font-size: 0.8rem;
+        border: 2px dashed #e2e8f0;
+    }
+
+    .room-card {
+        background: #ffffff;
+        padding: 15px;
+        border-radius: 15px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+    .room-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 20px rgba(0,0,0,0.08) !important;
+    }
+
+    .border-success { border-color: #6a3f6e !important; }
+    .bg-success { background-color: #6a3f6e !important; }
+    .border-secondary { border-color: #94a3b8 !important; }
+    .border-danger { border-color: #ff6b6b !important; }
+
+    .btn-custom-settle {
+        color: #6a3f6e;
+        border: 2px dashed #6a3f6e;
+        background-color: transparent;
+        transition: all 0.3s;
+        font-weight: 600;
+    }
+    .btn-custom-settle:hover {
+        background-color: #6a3f6e;
+        color: white;
+    }
+
+    .floor-info-card {
+        background: white;
+        border-radius: 12px;
+        padding: 10px 18px;
+        border-left: 4px solid #6f1a85;
+        display: inline-block;
+        text-align: right;
+    }
+    .floor-badge { color: #475569; font-size: 0.85rem; margin-bottom: 2px; }
+    .price-tag { color: #5c1a81; font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; justify-content: flex-end; }
+    .price-tag small { font-size: 0.7rem; text-transform: uppercase; margin-left: 5px; color: #94a3b8; font-weight: 600; }
+</style>
+
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="fw-bold m-0 text-dark">Моніторинг розселення</h2>
+            <p class="text-muted mb-0">Керування станом кімнат та житловим фондом</p>
+        </div>
+        <div class="text-end">
+            <div class="floor-info-card shadow-sm">
+                <div class="floor-badge">
+                    <i class="bi bi-layers-fill me-1 text-dorm-purple"></i> Поверх @Model.Number: <span class="fw-bold text-dark">@Model.Type</span>
+                </div>
+                <div class="price-tag">
+                    <i class="bi bi-tag-fill me-2 opacity-50"></i>@Model.Strategy.GetDailyRate() <small>грн / доба</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mb-4">
+        <div class="floor-navigation shadow-sm">
+            <a href="@Url.Action("Index", new { floor = 1 })" class="floor-link @(Model.Number == 1 ? "active" : "")">1 Поверх</a>
+            <a href="@Url.Action("Index", new { floor = 2 })" class="floor-link @(Model.Number == 2 ? "active" : "")">2 Поверх</a>
+            <a href="@Url.Action("Index", new { floor = 3 })" class="floor-link @(Model.Number == 3 ? "active" : "")">3 Поверх</a>
+        </div>
+    </div>
+
+    <div class="dormitory-container border">
+        <div class="rooms-row">
+            @for (int i = 0; i < 5; i++) { RenderRoom(Model.Rooms[i]); }
+        </div>
+
+        <div class="corridor">Центральний хол</div>
+
+        <div class="rooms-row">
+            @for (int i = 5; i < 10; i++) { RenderRoom(Model.Rooms[i]); }
+        </div>
+    </div>
+</div>

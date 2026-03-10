@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = "Календар руху мешканців";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="bi bi-calendar3"></i> Графік заселень та виселень
+        </h2>
+        <div class="text-muted">
+            <span class="badge bg-success me-2">●</span> Заселення
+            <span class="badge bg-danger ms-3">●</span> Виселення
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 bg-white p-4 rounded-4">
+        <div id='calendar'></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales-all.global.min.js'></script>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'dayGridMonth',
+          locale: 'uk', // Тепер українська мова точно підтягнеться
+          firstDay: 1,  // Понеділок - перший день тижня
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek'
+          },
+          buttonText: {
+            today: 'Сьогодні',
+            month: 'Місяць',
+            week: 'Тиждень'
+          },
+          // ВИПРАВЛЕНО: Використовуємо Razor для точної генерації посилання
+          events: '@Url.Action("GetCalendarEvents", "Dormitory")',
+          
+          eventClick: function(info) {
+             alert(info.event.title);
+          },
+          height: 'auto'
+        });
+        
+        calendar.render();
+      });
+    </script>
+}
