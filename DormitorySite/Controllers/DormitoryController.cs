@@ -34,32 +34,23 @@ namespace DormitorySite.Controllers
             return View(floorData);
         }
 
-        // МЕТОД ДЛЯ ЗАВАНТАЖЕННЯ ЧЕКА (ВИПРАВЛЕНО ДЛЯ БД)
         [HttpGet]
         public IActionResult DownloadReceipt(string fullName, int roomNumber)
         {
             if (!IsAuthorized()) return RedirectToAction("Login", "Account");
 
-            // Шукаємо студента безпосередньо в базі даних
             var student = _context.Students.FirstOrDefault(s => s.FullName == fullName && s.RoomNumber == roomNumber);
-
-            if (student == null)
-            {
-                return NotFound("Студента не знайдено в базі даних.");
-            }
-
-            // Отримуємо дані про поверх через Singleton (для доступу до стратегії ціни)
             var floor = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Rooms.Any(r => r.Number == roomNumber));
 
-            if (floor == null || student.PaidMonths == 0)
-            {
-                return NotFound("Дані про поверх не знайдено або оплата відсутня.");
-            }
+            if (student == null || floor == null) return NotFound();
 
-            byte[] fileBytes = ReceiptGenerator.GenerateReceipt(student, floor);
-            string fileName = $"Receipt_{student.FullName?.Replace(" ", "_")}.txt";
+            // Викликаємо новий метод генерації PDF
+            byte[] pdfBytes = ReceiptGenerator.GeneratePdfReceipt(student, floor);
+            
+            string fileName = $"Receipt_{student.FullName?.Replace(" ", "_")}.pdf";
 
-            return File(fileBytes, "text/plain", fileName);
+            // ПОВЕРТАЄМО PDF (application/pdf)
+            return File(pdfBytes, "application/pdf", fileName);
         }
 
         [HttpGet]
