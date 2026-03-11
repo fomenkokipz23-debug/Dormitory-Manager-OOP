@@ -1,4 +1,5 @@
 using DormitorySite.Models;
+using DormitorySite.Services; // Додано простір імен для сервісів
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -7,12 +8,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 // 2. БАЗА ДАНИХ (SQLite)
-// Реєструємо ApplicationDbContext для роботи з базою dormitory.db
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// --- ДОДАНО ПАТЕРН FACADE ---
+// Реєструємо фасад як Scoped сервіс
+builder.Services.AddScoped<DormitoryFacade>();
+// ----------------------------
+
 // 3. СЕСІЇ (для авторизації)
-builder.Services.AddDistributedMemoryCache(); // Потрібно для роботи сесій
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30); 
