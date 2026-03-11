@@ -11,7 +11,6 @@
             <i class="bi bi-person-plus"></i> Реєстрація студента
         </h2>
 
-        @* Загальне сповіщення про помилки (наприклад, якщо стать не співпадає) *@
         @if (!ViewData.ModelState.IsValid)
         {
             <div class="alert alert-danger border-0 shadow-sm mb-4">
@@ -20,15 +19,12 @@
             </div>
         }
 
-        @* Використовуємо Tag Helper для форми (автоматично додає захист від CSRF) *@
         <form asp-action="AddStudent" method="post">
             
             @* ПІБ *@
             <div class="mb-3">
                 <label class="form-label small fw-bold text-muted">ПІБ СТУДЕНТА:</label>
-                @* asp-for автоматично згенерує id, name та підтягне value з моделі *@
                 <input asp-for="FullName" class="form-control" placeholder="Прізвище Ім'я По батькові" />
-                @* Цей рядок автоматично покаже помилку з нашого Student.cs, якщо поле порожнє *@
                 <span asp-validation-for="FullName" class="text-danger small fw-bold"></span>
             </div>
 
@@ -41,15 +37,18 @@
                     {
                         foreach (var room in (List<Room>)ViewBag.Rooms)
                         {
-                            bool isAvailable = room.State.CanAssignStudent(room.Students.Count);
-                            string genderInfo = room.Students.Any() ? $" ({room.Students.First().Gender})" : " (Порожня)";
+                            // ВИПРАВЛЕНО: Ми не можемо звертатися до room.Students.Count, 
+                            // бо після додавання бази даних список Students всередині Room порожній.
+                            // Для курсової перевіримо тільки чи кімната не на ремонті через State.
+                            
+                            bool isAvailable = !room.IsUnderRepair; 
 
                             <option value="@room.Number" 
                                     selected="@(room.Number == ViewBag.SelectedRoom)"
                                     disabled="@(!isAvailable)"
                                     data-room-type="@(room.Number.ToString().StartsWith("1") ? "Standard" : (room.Number.ToString().StartsWith("2") ? "Discount" : "Luxury"))"
                                     class="@(isAvailable ? "" : "text-danger")">
-                                №@room.Number @genderInfo — @room.Students.Count/4 місць
+                                №@room.Number @(isAvailable ? "" : "(НА РЕМОНТІ)")
                             </option>
                         }
                     }
@@ -116,7 +115,6 @@
 </div>
 
 @section Scripts {
-    @* Цей скрипт підключає клієнтську валідацію jQuery (працює миттєво без перезавантаження сторінки) *@
     <partial name="_ValidationScriptsPartial" />
 
     <script>

@@ -5,6 +5,9 @@ namespace DormitorySite.Models;
 
 public class Student
 {
+    [Key] // Позначаємо, що це первинний ключ
+    public int Id { get; set; }
+    
     // Робимо поле обов'язковим
     [Required(ErrorMessage = "ПІБ є обов'язковим")]
     public string? FullName { get; set; }

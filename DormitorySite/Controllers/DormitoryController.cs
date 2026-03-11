@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using DormitorySite.Models;
 using DormitorySite.Services;
 using System.Linq;
@@ -8,6 +9,13 @@ namespace DormitorySite.Controllers
 {
     public class DormitoryController : Controller
     {
+        private readonly ApplicationDbContext _context;
+
+        public DormitoryController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
         private bool IsAuthorized() => HttpContext.Session.GetString("IsLoggedIn") == "true";
 
         public IActionResult Index(int floor = 1)
@@ -17,44 +25,35 @@ namespace DormitorySite.Controllers
             var floorData = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Number == floor) 
                             ?? DormitoryManager.Instance.Floors.First();
             
+            foreach (var room in floorData.Rooms)
+            {
+                room.Students = _context.Students.Where(s => s.RoomNumber == room.Number).ToList();
+            }
+
             ViewBag.CurrentFloor = floor;
             return View(floorData);
         }
 
-        public IActionResult ToggleRepair(int roomNumber, int floor)
-        {
-            if (!IsAuthorized()) return RedirectToAction("Login", "Account");
-
-            var room = DormitoryManager.Instance.Floors.SelectMany(f => f.Rooms).FirstOrDefault(r => r.Number == roomNumber);
-            
-            if (room != null)
-            {
-                room.IsUnderRepair = !room.IsUnderRepair;
-                string msg = room.IsUnderRepair ? "закрита на ремонт" : "відкрита";
-                DormitoryManager.Instance.AddLog($"Кімната №{roomNumber} {msg}.");
-            }
-            
-            return RedirectToAction("Index", new { floor = floor });
-        }
-
-        public IActionResult Logs()
-        {
-            if (!IsAuthorized()) return RedirectToAction("Login", "Account");
-            return View(DormitoryManager.Instance.Logs);
-        }
-
+        // МЕТОД ДЛЯ ЗАВАНТАЖЕННЯ ЧЕКА (ВИПРАВЛЕНО ДЛЯ БД)
         [HttpGet]
         public IActionResult DownloadReceipt(string fullName, int roomNumber)
         {
             if (!IsAuthorized()) return RedirectToAction("Login", "Account");
 
-            var floor = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Rooms.Any(r => r.Number == roomNumber));
-            var room = floor?.Rooms.FirstOrDefault(r => r.Number == roomNumber);
-            var student = room?.Students.FirstOrDefault(s => s.FullName == fullName);
+            // Шукаємо студента безпосередньо в базі даних
+            var student = _context.Students.FirstOrDefault(s => s.FullName == fullName && s.RoomNumber == roomNumber);
 
-            if (student == null || floor == null || student.PaidMonths == 0)
+            if (student == null)
             {
-                return NotFound("Студента не знайдено, або оплата відсутня.");
+                return NotFound("Студента не знайдено в базі даних.");
+            }
+
+            // Отримуємо дані про поверх через Singleton (для доступу до стратегії ціни)
+            var floor = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Rooms.Any(r => r.Number == roomNumber));
+
+            if (floor == null || student.PaidMonths == 0)
+            {
+                return NotFound("Дані про поверх не знайдено або оплата відсутня.");
             }
 
             byte[] fileBytes = ReceiptGenerator.GenerateReceipt(student, floor);
@@ -79,41 +78,31 @@ namespace DormitorySite.Controllers
         {
             if (!IsAuthorized()) return RedirectToAction("Login", "Account");
 
-            var floor = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Rooms.Any(r => r.Number == student.RoomNumber));
-            var room = floor?.Rooms.First(r => r.Number == student.RoomNumber);
-
-            if (room != null)
+            if (ModelState.IsValid)
             {
-                // 1. ПЕРЕВІРКА СТАТІ
-                if (room.Students.Any() && room.Students.First().Gender != student.Gender)
-                {
-                    string existingGender = room.Students.First().Gender ?? "інша стать";
-                    ModelState.AddModelError(string.Empty, $"Неможливо поселити: у кімнаті №{room.Number} проживають тільки {existingGender.ToLower()}!");
-                    
-                    ViewBag.Rooms = DormitoryManager.Instance.Floors.SelectMany(f => f.Rooms).OrderBy(r => r.Number).ToList();
-                    return View(student);
-                }
+                var floor = DormitoryManager.Instance.Floors.FirstOrDefault(f => f.Rooms.Any(r => r.Number == student.RoomNumber));
+                var room = floor?.Rooms.First(r => r.Number == student.RoomNumber);
 
-                // 2. ПЕРЕВІРКА ВІЛЬНИХ МІСЦЬ (Делегування логіки патерну State)
-                if (room.State.CanAssignStudent(room.Students.Count))
+                if (room != null)
                 {
-                    room.Students.Add(student);
+                    var currentStudents = _context.Students.Where(s => s.RoomNumber == room.Number).ToList();
 
-                    if (student.PaidMonths == 0)
+                    if (currentStudents.Any() && currentStudents.First().Gender != student.Gender)
                     {
-                        DormitoryManager.Instance.AddLog($"⚠️ УВАГА: {student.FullName} (кім. №{student.RoomNumber}) НЕ ОПЛАТИВ проживання!");
+                        ModelState.AddModelError(string.Empty, $"Помилка: у кімнаті №{room.Number} живуть тільки {currentStudents.First().Gender}!");
+                    }
+                    else if (room.State.CanAssignStudent(currentStudents.Count))
+                    {
+                        _context.Students.Add(student);
+                        _context.SaveChanges();
+
+                        DormitoryManager.Instance.AddLog($"✅ БАЗА ДАНИХ: Заселено {student.FullName} (кім. №{student.RoomNumber}).");
+                        return RedirectToAction("Students");
                     }
                     else
                     {
-                        decimal totalAmount = floor.Strategy.CalculateTotal(student.PaidMonths);
-                        DormitoryManager.Instance.AddLog($"✅ Заселено: {student.FullName} (кім. №{student.RoomNumber}). Оплачено за {student.PaidMonths} міс. Сума: {totalAmount} грн.");
+                        ModelState.AddModelError(string.Empty, "Кімната переповнена або закрита.");
                     }
-
-                    return RedirectToAction("Index", new { floor = floor.Number });
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "У цій кімнаті немає вільних місць або вона на ремонті.");
                 }
             }
 
@@ -125,18 +114,31 @@ namespace DormitorySite.Controllers
         {
             if (!IsAuthorized()) return RedirectToAction("Login", "Account");
             
-            var allStudents = DormitoryManager.Instance.Floors.SelectMany(f => f.Rooms.SelectMany(r => r.Students)).AsQueryable();
+            var query = _context.Students.AsQueryable();
             
             if (!string.IsNullOrEmpty(search)) 
-                allStudents = allStudents.Where(s => s.FullName != null && s.FullName.Contains(search, System.StringComparison.OrdinalIgnoreCase));
+                query = query.Where(s => s.FullName.Contains(search));
             
             if (!string.IsNullOrEmpty(gender)) 
-                allStudents = allStudents.Where(s => s.Gender == gender);
+                query = query.Where(s => s.Gender == gender);
             
             if (course.HasValue) 
-                allStudents = allStudents.Where(s => s.Course == course.Value);
+                query = query.Where(s => s.Course == course.Value);
             
-            return View(allStudents.ToList());
+            return View(query.ToList());
+        }
+
+        [HttpPost]
+        public IActionResult DeleteStudent(int id)
+        {
+            var student = _context.Students.Find(id);
+            if (student != null)
+            {
+                _context.Students.Remove(student);
+                _context.SaveChanges();
+                DormitoryManager.Instance.AddLog($"❌ Виселено: {student.FullName}.");
+            }
+            return RedirectToAction("Students");
         }
 
         public IActionResult Calendar() => IsAuthorized() ? View() : RedirectToAction("Login", "Account");
@@ -144,13 +146,13 @@ namespace DormitorySite.Controllers
         [HttpGet]
         public JsonResult GetCalendarEvents()
         {
-            var students = DormitoryManager.Instance.Floors.SelectMany(f => f.Rooms.SelectMany(r => r.Students));
-            var events = students.SelectMany(s => new[] {
+            var events = _context.Students.ToList().SelectMany(s => new[] {
                 new { title = $"⬇ Вхід: {s.FullName}", start = s.SettlementDate.ToString("yyyy-MM-dd"), color = "#28a745" },
                 new { title = $"⬆ Вихід: {s.FullName}", start = s.DepartureDate.ToString("yyyy-MM-dd"), color = "#dc3545" }
             });
-            
             return Json(events);
         }
+
+        public IActionResult Logs() => IsAuthorized() ? View(DormitoryManager.Instance.Logs) : RedirectToAction("Login", "Account");
     }
 }
